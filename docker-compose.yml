@@ -1,0 +1,39 @@
+services:
+  mongodb:
+    image: 'bitnami/mongodb:latest'
+    container_name: mongodb
+    restart: always
+    environment:
+      - MONGODB_ROOT_PASSWORD=${MONGODB_ROOT_PASSWORD}
+      - MONGODB_DATABASE=${MONGODB_DATABASE}
+      - MONGODB_USERNAME=${MONGODB_USERNAME}
+      - MONGODB_PASSWORD=${MONGODB_PASSWORD}
+    ports:
+      - "27017:27017"
+    volumes:
+          - mongodb_data:/bitnami/mongodb
+    tmpfs:
+      - /tmp
+
+  ns_app:
+      build: .
+      command: ["python", "main.py"]
+      environment:
+        - RABBITMQ_URL=${RABBITMQ_URL}
+        - QUEUE_NAME_MESSAGE=${QUEUE_NAME_MESSAGE}
+        - QUEUE_NAME_DLQ=${QUEUE_NAME_DLQ}
+        - MONGO_URL=${MONGO_URL}
+        - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+        - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+        - AWS_REGION=${AWS_REGION}
+        - SES_EMAIL_FROM=${SES_EMAIL_FROM}
+      extra_hosts:
+        - "host.docker.internal:host-gateway"
+#      depends_on:
+#        mongodb:
+#          condition: service_healthy
+      ports:
+        - "8001:8001"
+
+volumes:
+  mongodb_data:
