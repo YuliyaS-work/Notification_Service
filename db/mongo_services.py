@@ -2,7 +2,11 @@
 This file contains a repository class for working with reset‑password messages in MongoDB.
 It provides simple methods to save, update, and read documents from the messages collection.
 """
+import logging
+
 from schemas.db import StoredResetPasswordMessage
+
+logger = logging.getLogger(__name__)
 
 
 class MessageRepository:
@@ -11,30 +15,54 @@ class MessageRepository:
     def __init__(self, collection):
         """Initializes the object with the given collection."""
         self.collection = collection
+        logging.info("Created MessageRepository instance")
 
 
     async def save_doc(self, data: StoredResetPasswordMessage):
         """Saves a new message document to the database."""
         doc = data.model_dump(by_alias=True)
-        await self.collection.insert_one(doc)
-
+        try:
+            await self.collection.insert_one(doc)
+            logger.info(f"Saved message with token={data.token}")
+        except Exception as e:
+            logger.error(f"Failed to save message with token={data.token}: {e}")
+            raise
 
     async def delete_doc(self, token: str):
         """Deletes a message document by its token from database."""
-        await self.collection.delete_one({"token": token})
+        try:
+            await self.collection.delete_one({"token": token})
+            logger.info(f"Deleted message with token={token}")
+        except Exception as e:
+            logger.error(f"Failed to delete message with token={token}: {e}")
+            raise
 
 
     async def increase_attempts(self, token: str):
         """Updates the number of sending attempts for a message."""
-        await self.collection.update_one({"token": token}, {"$inc": {"attempts": 1}})
-
+        try:
+            await self.collection.update_one({"token": token}, {"$inc": {"attempts": 1}})
+            logger.info(f"Updated message attempts  with token={token}")
+        except Exception as e:
+            logger.error(f"Failed to increase message attempts with token={token}: {e}")
+            raise
 
     async def get_doc(self, token: str):
         """Returns a message document by its token."""
-        result =  await self.collection.find_one({"token": token})
-        return result
+        try:
+            result =  await self.collection.find_one({"token": token})
+            logger.info(f"Found message with token={token}")
+            return result
+        except Exception as e:
+            logger.error(f"Failed to find message with token={token}: {e}")
+            raise
 
 
     async def update_status_doc(self, token: str, status: str):
         """Updates the message status."""
-        await self.collection.update_one({"token": token}, {"$set": {"status": status}})
+        try:
+            await self.collection.find_one_and_update({"token": token}, {"$set": {"status": status}})
+            logger.info(f"Updated message status with token={token}")
+        except Exception as e:
+            logger.error(f"Failed to update message status with token={token}: {e}")
+            raise

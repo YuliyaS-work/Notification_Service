@@ -2,10 +2,14 @@
 This file provides an async function for sending emails through Amazon SES.
 It creates the SES client and sends messages using the given data.
 """
+import logging
+
 import aioboto3
 from botocore.exceptions import ClientError
 
 from core.config import settings
+
+logger = logging.getLogger(__name__)
 
 ses_session = aioboto3.Session(
     aws_access_key_id=settings.aws_access_key_id,
@@ -43,9 +47,8 @@ async def send_email(source, destination, subject, text, html, reply_tos=None) -
     if reply_tos:
         send_args["ReplyToAddresses"] = reply_tos
 
-    try:
-        async with ses_session.client("ses") as ses:
-            response = await ses.send_email(**send_args)
-            return response["MessageId"]
-    except ClientError:
-        raise
+    logger.info(f"Start: sending email to {destination}")
+    async with ses_session.client("ses") as ses:
+        response = await ses.send_email(**send_args)
+        logger.info(f"Success: sending email to {destination}, message_id={response['MessageId']}")
+        return response["MessageId"]

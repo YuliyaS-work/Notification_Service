@@ -9,3 +9,6 @@ dependencies = [
     "motor>=3.7.1",
     "pydantic-settings>=2.14.1",
 ]
+
+[dependency-groups]
+dev = ["ruff"]
