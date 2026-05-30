@@ -2,6 +2,7 @@
 This file contains consumers that read messages from RabbitMQ queues.
 They listen for messages and send them to the proper handlers.
 """
+import asyncio
 import logging
 
 from core.config import settings
@@ -20,28 +21,38 @@ async def consume_message(repository, connection) -> None:
     """
     logger.info("Start: handling main queue")
 
-    async with connection:
-        # Creating channel
-        channel = await connection.channel()
-        logger.info("Created a channel for main queue")
+    while True:
+        try:
+            if connection.is_closed:
+                await asyncio.sleep(5)
+                continue
 
-        # Taking no more than 20 messages in advance
-        await channel.set_qos(prefetch_count=20)
+            # Creating channel
+            channel = await connection.channel()
+            logger.info("Created a channel for main queue")
 
-        # Getting queue
-        queue = await channel.get_queue(settings.queue_name_message)
-        logger.info(f"Got queue={settings.queue_name_message}")
+            async with channel:
+                # Taking no more than 20 messages in advance
+                await channel.set_qos(prefetch_count=20)
 
-        # Processing messages in queue
-        async with queue.iterator() as queue_iter:
-            async for message in queue_iter:
-                body = message.body.decode()
-                try:
-                    await process_message(body, message, repository)
-                    logger.info("Success: processing message from main queue")
-                except Exception as e:
-                    logger.error(f"Error: failed message processing: {e}")
-                    continue
+                # Getting queue
+                queue = await channel.get_queue(settings.queue_name_message)
+                logger.info(f"Got queue={settings.queue_name_message}")
+
+                # Processing messages in queue
+                async with queue.iterator() as queue_iter:
+                    async for message in queue_iter:
+                        body = message.body.decode()
+                        try:
+                            await process_message(body, message, repository)
+                            logger.info("Success: processing message from main queue")
+                        except Exception as e:
+                            logger.error(f"Error: failed message processing: {e}")
+                            continue
+        except Exception as e:
+            logger.error(f"Error: failed network connection: {e}")
+            await asyncio.sleep(5)
+            continue
 
 
 async def consume_dlq(connection) -> None:
@@ -53,21 +64,31 @@ async def consume_dlq(connection) -> None:
     """
     logger.info("Start: handling dlq queue")
 
-    async with connection:
-        # Creating channel
-        channel = await connection.channel()
-        logger.info("Created a channel for dlq queue")
+    while True:
+        try:
+            if connection.is_closed:
+                await asyncio.sleep(5)
+                continue
 
-        # Getting queue
-        queue = await channel.get_queue(settings.queue_name_dlq)
-        logger.info(f"Got queue={settings.queue_name_dlq}")
+            # Creating channel
+            channel = await connection.channel()
+            logger.info("Created a channel for dlq queue")
 
-        # Processing messages in queue
-        async with queue.iterator() as queue_iter:
-            async for message in queue_iter:
-                try:
-                    await process_dlq_message(message)
-                    logger.info("Success: processing message from dlq queue")
-                except Exception as e:
-                    logger.error(f"Error: failed dlq message processing: {e}")
-                    continue
+            async with channel:
+                # Getting queue
+                queue = await channel.get_queue(settings.queue_name_dlq)
+                logger.info(f"Got queue={settings.queue_name_dlq}")
+
+                # Processing messages in queue
+                async with queue.iterator() as queue_iter:
+                    async for message in queue_iter:
+                        try:
+                            await process_dlq_message(message)
+                            logger.info("Success: processing message from dlq queue")
+                        except Exception as e:
+                            logger.error(f"Error: failed dlq message processing: {e}")
+                            continue
+        except Exception as e:
+            logger.error(f"Error: failed network connection: {e}")
+            await asyncio.sleep(5)
+            continue
