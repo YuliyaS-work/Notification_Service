@@ -1,0 +1,67 @@
+import logging
+from unittest.mock import patch, MagicMock
+
+import pytest
+
+
+@patch("db.config.AsyncIOMotorClient")
+def test_connect_db_success(mock_client, mock_mongo_db):
+    # Arrange
+    db = mock_mongo_db
+
+    # Act
+    db.connect_db()
+
+    # Assert
+    assert db.client is not None
+    mock_client.assert_called_once_with("test_url", uuidrepresentation="standard")
+
+
+@patch("db.config.AsyncIOMotorClient")
+def test_connect_db_fail(mock_client, mock_mongo_db, caplog):
+    # Arrange
+    db = mock_mongo_db
+    mock_client.side_effect = Exception("fake_error")
+
+    # Act
+    with caplog.at_level(logging.ERROR):
+        db.connect_db()
+
+    # Assert
+    assert f"Connection to MongoDB failed: fake_error" in caplog.text
+
+
+def test_disconnect_db_success( mock_mongo_db, caplog):
+    # Arrange
+    db = mock_mongo_db
+    db.client = MagicMock()
+
+    # Act
+    with caplog.at_level(logging.INFO):
+        db.disconnect_db()
+
+    # Assert
+    assert "Connection to MongoDB was closed" in caplog.text
+    db.client.close.assert_called_once()
+
+
+def test_messages_connected(mock_mongo_db):
+    # Arrange/Act
+    db = mock_mongo_db
+    db.client = {"notification": {"messages": "fake_collection"}}
+
+    # Assert
+    assert db.messages == "fake_collection"
+
+
+def test_messages_not_connected(mock_mongo_db):
+    # Arrange
+    db = mock_mongo_db
+    db.client = None
+
+    # Act
+    with pytest.raises(RuntimeError) as e:
+        db.messages()
+
+    # Assert
+    assert str(e.value) == "MongoDB client is not connected"

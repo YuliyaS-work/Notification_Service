@@ -5,7 +5,6 @@ It creates the SES client and sends messages using the given data.
 import logging
 
 import aioboto3
-from botocore.exceptions import ClientError
 
 from core.config import settings
 

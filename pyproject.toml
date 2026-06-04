@@ -6,9 +6,15 @@ requires-python = ">=3.13"
 dependencies = [
     "aio-pika>=9.6.2",
     "aioboto3>=15.5.0",
+    "coverage>=7.14.1",
     "motor>=3.7.1",
     "pydantic-settings>=2.14.1",
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.4.0",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
 
 [dependency-groups]
 dev = ["ruff"]

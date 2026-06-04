@@ -64,7 +64,6 @@ async def process_message(raw_body: str, message, repository):
 
     # Send email if success deleting from queue and the database otherwise return to RabbitMq
     try:
-        logger.info("Sending email")
         await send_email(
             settings.ses_email_from,
             doc["email"],
@@ -75,7 +74,6 @@ async def process_message(raw_body: str, message, repository):
         logger.info(f"Success: sending email, token={token}")
         await message.ack()
         await repository.delete_doc(token)
-        logger.info(f"Deleted message document from the database, token={token}")
 
     except Exception as e:
         logger.error(f"Error: failed sending email, token={token}: {e}")

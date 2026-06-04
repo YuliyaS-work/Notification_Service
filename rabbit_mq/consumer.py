@@ -1,6 +1,8 @@
 """
-This file contains consumers that read messages from RabbitMQ queues.
-They listen for messages and send them to the proper handlers.
+This file contains asynchronous RabbitMQ consumers.
+
+They read messages from main and DLQ queues, create channels,
+iterate over incoming messages and pass them to the proper handlers.
 """
 import asyncio
 import logging
@@ -11,15 +13,43 @@ from services.message import process_message, process_dlq_message
 logger = logging.getLogger(__name__)
 
 
-async def consume_message(repository, connection) -> None:
+async def handle_message(message, repository, queue_name):
+    """Processes a single message from a main queue or DLQ."""
+    body = message.body.decode()
+
+    try:
+        if queue_name == settings.queue_name_message:
+            await process_message(body, message, repository)
+        else:
+            await process_dlq_message(message)
+
+        logger.info(f"Success: processing message from {queue_name} ")
+
+    except Exception as e:
+        logger.error(f"Error: failed message processing in {queue_name}: {e}")
+
+
+async def iterate_queue(queue, repository, queue_name):
+    """Iterates over messages in the main queue or DLQ."""
+    async with queue.iterator() as queue_iter:
+        async for message in queue_iter:
+            await handle_message(message, repository, queue_name)
+    logger.info(f"Success: iterating over messages in {queue_name}")
+
+
+async def consume_general(connection, repository, queue_name, prefetch=None):
     """
-    Consumes messages from the main queue and sends them to the handler.
+    Runs a persistent consumer loop for a RabbitMQ queue.
 
     Args:
-        repository: Repository used by the handler to interact with the database.
-        connection: Active RabbitMQ connection used to create channels and consume messages.
+        connection: Active RabbitMQ connection used to create channels.
+        repository: Repository instance for message processing.
+        queue_name: Name of the queue.
+        prefetch: Number of messages to prefetch (optional).
+    Returns:
+        None: The function runs indefinitely and does not return a value.
     """
-    logger.info("Start: handling main queue")
+    logger.info(f"Start: handling {queue_name}")
 
     while True:
         try:
@@ -27,68 +57,49 @@ async def consume_message(repository, connection) -> None:
                 await asyncio.sleep(5)
                 continue
 
-            # Creating channel
             channel = await connection.channel()
-            logger.info("Created a channel for main queue")
+            logger.info(f"Created a channel for {queue_name}")
 
             async with channel:
-                # Taking no more than 20 messages in advance
-                await channel.set_qos(prefetch_count=20)
+                if prefetch:
+                    await channel.set_qos(prefetch_count=prefetch)
 
-                # Getting queue
-                queue = await channel.get_queue(settings.queue_name_message)
-                logger.info(f"Got queue={settings.queue_name_message}")
+                queue = await channel.get_queue(queue_name)
+                logger.info(f"Got queue={queue_name}")
 
-                # Processing messages in queue
-                async with queue.iterator() as queue_iter:
-                    async for message in queue_iter:
-                        body = message.body.decode()
-                        try:
-                            await process_message(body, message, repository)
-                            logger.info("Success: processing message from main queue")
-                        except Exception as e:
-                            logger.error(f"Error: failed message processing: {e}")
-                            continue
+                await iterate_queue(queue, repository, queue_name)
+
+            logger.info(f"Success: handled {queue_name}")
+
         except Exception as e:
-            logger.error(f"Error: failed network connection: {e}")
+            logger.error(f"Error: failed network connection for {queue_name}: {e}")
             await asyncio.sleep(5)
             continue
 
 
-async def consume_dlq(connection) -> None:
-    """
-    Consumes messages from the dead‑letter queue and processes them.
+async def consume_message(repository, connection):
+    """Starts consumer for the main queue."""
+    logger.info("Start: launching consumer for main queue")
 
-    Args:
-        connection: Active RabbitMQ connection used to create channels and consume messages.
-    """
-    logger.info("Start: handling dlq queue")
+    await consume_general(
+        connection=connection,
+        repository=repository,
+        queue_name=settings.queue_name_message,
+        prefetch=20,
+    )
 
-    while True:
-        try:
-            if connection.is_closed:
-                await asyncio.sleep(5)
-                continue
+    logger.info("Consumer for main queue stoped")
 
-            # Creating channel
-            channel = await connection.channel()
-            logger.info("Created a channel for dlq queue")
 
-            async with channel:
-                # Getting queue
-                queue = await channel.get_queue(settings.queue_name_dlq)
-                logger.info(f"Got queue={settings.queue_name_dlq}")
+async def consume_dlq(connection):
+    """Starts consumer for DLQ."""
+    logger.info("Start: launching consumer for DLQ")
 
-                # Processing messages in queue
-                async with queue.iterator() as queue_iter:
-                    async for message in queue_iter:
-                        try:
-                            await process_dlq_message(message)
-                            logger.info("Success: processing message from dlq queue")
-                        except Exception as e:
-                            logger.error(f"Error: failed dlq message processing: {e}")
-                            continue
-        except Exception as e:
-            logger.error(f"Error: failed network connection: {e}")
-            await asyncio.sleep(5)
-            continue
+    await consume_general(
+        connection=connection,
+        repository=None,
+        queue_name=settings.queue_name_dlq,
+        prefetch=None,
+    )
+
+    logger.info("Consumer for DLQ stoped")
