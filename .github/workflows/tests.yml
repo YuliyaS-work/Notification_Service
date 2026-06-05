@@ -9,10 +9,11 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DATABASE_URL: mongodb://localhost:27017/test
+      MONGO_URL: mongodb://localhost:27017/test
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
       AWS_REGION: eu-central-1
+      SES_EMAIL_FROM: user@example.com
       RABBITMQ_URL: amqp://localhost
       QUEUE_NAME_MESSAGE: test_main_queue
       QUEUE_NAME_DLQ: test_dlq
