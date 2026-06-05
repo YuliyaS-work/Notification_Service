@@ -1,3 +1,7 @@
+"""
+Provides reusable pytest fixtures for MongoDB, repository, message data
+and mock connections used across tests.
+"""
 import json
 from unittest.mock import AsyncMock, MagicMock
 
@@ -9,21 +13,25 @@ from db.mongo_services import MessageRepository
 
 @pytest.fixture
 def mock_mongo_db():
+    """Creates a MongoDB instance."""
     return MongoDB("test_url")
 
 
 @pytest.fixture
 def mock_collection():
+    """Creates a mock asynchronous MongoDB collection."""
     return AsyncMock()
 
 
 @pytest.fixture
 def mock_repo(mock_collection):
+    """Creates a MessageRepository instance bounded to the mocked collection."""
     return MessageRepository(mock_collection)
 
 
 @pytest.fixture
 def mock_data():
+    """Creates a mock message like object with token, status and attempts."""
     obj = MagicMock()
     obj.model_dump.return_value = {"token": "fake_token"}
     obj.token = "fake_token"
@@ -34,6 +42,7 @@ def mock_data():
 
 @pytest.fixture
 def mock_incoming_data():
+    """Creates serialized incoming message data."""
     return json.dumps({
         "subject": "reset password",
         "body": "click the link",
@@ -44,30 +53,6 @@ def mock_incoming_data():
 
 @pytest.fixture
 def mock_connection():
+    """Creates a mock asynchronous connection object."""
     connection = AsyncMock()
     return connection
-
-#
-# class AsyncIteratorCM:
-#     def __init__(self, items):
-#         self.items = items
-#
-#     async def __aenter__(self):
-#         return self
-#
-#     async def __aexit__(self, exc_type, exc, tb):
-#         pass
-#
-#     def __aiter__(self):
-#         return self._aiter()
-#
-#     async def _aiter(self):
-#         for item in self.items:
-#             yield item
-#
-#
-# @pytest.fixture
-# def mock_iterator():
-#     def _mock_iterator(items):
-#         return AsyncIteratorCM(items)
-#     return _mock_iterator

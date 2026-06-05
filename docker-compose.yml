@@ -29,9 +29,6 @@ services:
         - SES_EMAIL_FROM=${SES_EMAIL_FROM}
       extra_hosts:
         - "host.docker.internal:host-gateway"
-#      depends_on:
-#        mongodb:
-#          condition: service_healthy
       ports:
         - "8001:8001"
 

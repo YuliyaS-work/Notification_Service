@@ -1,3 +1,4 @@
+"""Provides tests for simple CRUD operations and errors handling in the MessageRepository."""
 import pytest
 
 
@@ -7,6 +8,7 @@ async def test_save_doc_success(
         mock_repo,
         mock_data
 ):
+    """Tests that saving a document succeeds into the database collection."""
     # Act
     await mock_repo.save_doc(mock_data)
 
@@ -21,6 +23,7 @@ async def test_save_doc_fail(
         mock_data,
         caplog
 ):
+    """Tests that saving a document fails and raises error."""
     # Arrange
     mock_collection.insert_one.side_effect = Exception()
 
@@ -40,6 +43,7 @@ async def test_delete_doc_success(
         mock_repo,
         mock_data
 ):
+    """Tests that deleting a document succeeds from the database collection."""
     # Act
     await mock_repo.delete_doc(mock_data.token)
 
@@ -54,6 +58,7 @@ async def test_delete_doc_fail(
         mock_data,
         caplog
 ):
+    """Tests that deleting a document fails and raises error."""
     # Arrange
     mock_collection.delete_one.side_effect = Exception()
 
@@ -73,6 +78,7 @@ async def test_increase_attempts_success(
         mock_repo,
         mock_data
 ):
+    """Tests that increasing message sending attempts succeeds."""
     # Act
     await mock_repo.increase_attempts(mock_data.token)
 
@@ -87,6 +93,7 @@ async def test_increase_attempts_fail(
         mock_data,
         caplog
 ):
+    """Tests that increasing message sending attempts fails and raises error."""
     # Arrange
     mock_collection.update_one.side_effect = Exception()
 
@@ -106,6 +113,7 @@ async def test_get_doc_success(
         mock_repo,
         mock_data
 ):
+    """Tests that getting a document from the database collection succeeds."""
     # Act
     await mock_repo.get_doc(mock_data.token)
 
@@ -120,6 +128,7 @@ async def test_get_doc_fail(
         mock_data,
         caplog
 ):
+    """Tests that getting a document from the database collection fails and raises error."""
     # Arrange
     mock_collection.find_one.side_effect = Exception()
 
@@ -139,6 +148,7 @@ async def test_update_status_doc_success(
         mock_repo,
         mock_data
 ):
+    """Tests that updating message status succeeds."""
     # Act
     await mock_repo.update_status_doc(mock_data.token, mock_data.status)
 
@@ -153,6 +163,7 @@ async def test_update_status_doc_fail(
         mock_data,
         caplog
 ):
+    """Tests that updating message status fails and raises error."""
     # Arrange
     mock_collection.find_one_and_update.side_effect = Exception()
 

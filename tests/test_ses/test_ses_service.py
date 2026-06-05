@@ -1,3 +1,4 @@
+"""Provides unit tests for SES email sending behavior, including success, failure, and reply‑to handling."""
 from unittest.mock import patch, AsyncMock
 
 import pytest
@@ -10,6 +11,7 @@ from ses.ses_service import send_email
 async def test_send_email_success(
         mock_ses_session
 ):
+    """Tests successful SES email sending."""
     # Arrange/Act
     mock_ses_client = AsyncMock()
     mock_ses_client.send_email.return_value = {"MessageId": "fake_id"}
@@ -34,6 +36,7 @@ async def test_send_email_success(
 async def test_send_email_failure(
         mock_ses_session
 ):
+    """Tests successful SES email sending."""
     # Arrange/Act
     mock_ses_client = AsyncMock()
     mock_ses_client.send_email.side_effect = Exception("SES error")
@@ -58,6 +61,7 @@ async def test_send_email_failure(
 async def test_send_email_with_reply_tos(
         mock_ses_session
 ):
+    """Tests successful SES email sending with ReplyToAddresses."""
     # Arrange/Act
     mock_ses_client = AsyncMock()
     mock_ses_client.send_email.return_value = {"MessageId": "fake_id"}

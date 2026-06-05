@@ -1,0 +1,40 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: mongodb://localhost:27017/test
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_REGION: eu-central-1
+      RABBITMQ_URL: amqp://localhost
+      QUEUE_NAME_MESSAGE: test_main_queue
+      QUEUE_NAME_DLQ: test_dlq
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies with uv
+        working-directory: notification_service
+        run: uv sync --frozen
+
+      - name: Run tests
+        working-directory: notification_service
+        run: uv run coverage run -m pytest
+
+      - name: Coverage report
+        working-directory: notification_service
+        run: uv run coverage report --fail-under=80

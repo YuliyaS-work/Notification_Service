@@ -1,21 +1,20 @@
+"""Provides unit tests for message processing logic  and error handling."""
 import logging
-import uuid
-from datetime import datetime
 from unittest.mock import patch, AsyncMock, MagicMock
 
 import pytest
 
-from schemas.db import StoredResetPasswordMessage
 from services.message import process_message, process_dlq_message
 
 
 @pytest.mark.asyncio
 @patch("services.message.send_email")
-async def test_process_message_success_msg_in_db(
+async def test_process_message_success_message_in_db(
         mock_send_email,
         mock_incoming_data,
         mock_repo
 ):
+    """Tests successful processing of a message already stored in the database."""
     # Arrange
     mock_repo.get_doc = AsyncMock(return_value=mock_incoming_data)
     message = AsyncMock()
@@ -47,6 +46,7 @@ async def test_process_message_invalid_body(
         mock_repo,
         caplog
 ):
+    """Tests that incoming message body is invalid."""
     # Arrange
     raw_body = "invalid body"
     mock_validate_incoming_data.side_effect = Exception()
@@ -71,6 +71,7 @@ async def test_process_message_not_send_attempts_lt_5(
         mock_repo,
         caplog
 ):
+    """Tests email sending failure when attempts less than five."""
     # Arrange
     mock_repo.get_doc = AsyncMock(return_value={
         "email": "user@example.com",
@@ -105,6 +106,7 @@ async def test_process_message_not_send_attempts_ge_5(
         mock_repo,
         caplog
 ):
+    """Tests email sending failure when attempts greater than or equal to five."""
     # Arrange
     mock_repo.get_doc = AsyncMock(return_value={
         "email": "user@example.com",
@@ -139,6 +141,7 @@ async def test_process_message_general_exception(
         mock_repo,
         caplog
 ):
+    """Tests the general exception handling."""
     # Arrange
     mock_repo.get_doc = AsyncMock(return_value={
         "email": "user@example.com",
@@ -170,6 +173,7 @@ async def test_process_message_save_new_doc(
         mock_incoming_data,
         mock_repo,
 ):
+    """Tests saving a document when email sending is the first time."""
     # Arrange
     mock_validate_data.return_value = MagicMock(
         token="fake_token",
@@ -212,6 +216,7 @@ async def test_process_message_not_save_new_doc(
         mock_repo,
         caplog
 ):
+    """Tests that a document saving fails when email sending is the first time."""
     # Arrange
     mock_validate_data.return_value = MagicMock(
         token="fake_token",
@@ -244,6 +249,7 @@ async def test_process_message_not_send_not_get_doc(
         mock_repo,
         caplog
 ):
+    """Tests that email sending and/or document saving fail."""
     # Arrange
     mock_repo.get_doc = AsyncMock(return_value={
         "email": "user@example.com",
@@ -269,6 +275,7 @@ async def test_process_message_not_send_not_get_doc(
 
 @pytest.mark.asyncio
 async def test_process_dlq_message_success(caplog):
+    """Tests that DLQ message acknowledge succeeds."""
     # Arrange
     message = AsyncMock()
     message.ack = AsyncMock()

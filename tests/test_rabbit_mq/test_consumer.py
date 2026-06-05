@@ -1,3 +1,4 @@
+"""Provides unit tests for message handling, queue iteration, and consumers of DLQ and main queue in RabbitMQ."""
 import logging
 
 import pytest
@@ -12,6 +13,7 @@ from core.config import settings
 @pytest.mark.asyncio
 @patch("rabbit_mq.consumer.process_message", new_callable=AsyncMock)
 async def test_handle_message_main_success(mock_process):
+    """Tests that handle_message() correctly processes a main queue message."""
     # Arrange
     message = MagicMock()
     message.body = b"test"
@@ -27,6 +29,7 @@ async def test_handle_message_main_success(mock_process):
 @pytest.mark.asyncio
 @patch("rabbit_mq.consumer.process_message", new_callable=AsyncMock)
 async def test_handle_message_main_error(mock_process, caplog):
+    """Tests that handle_message() fails while processing a main-queue message."""
     # Arrange
     message = MagicMock()
     message.body = b"test_body"
@@ -44,6 +47,7 @@ async def test_handle_message_main_error(mock_process, caplog):
 @pytest.mark.asyncio
 @patch("rabbit_mq.consumer.process_dlq_message", new_callable=AsyncMock)
 async def test_handle_message_dlq_success(mock_dlq):
+    """Tests that handle_message() correctly processes a DLQ message."""
     # Arrange
     message = MagicMock()
     message.body = b"fake_body"
@@ -57,14 +61,15 @@ async def test_handle_message_dlq_success(mock_dlq):
 
 @pytest.mark.asyncio
 @patch("rabbit_mq.consumer.handle_message", new_callable=AsyncMock)
-async def test_iterate_queue_calls_handle_message(mock_handler):
+async def test_iterate_queue_success(mock_handler):
+    """Tests that iterate_queue iterate each message in the iterator successfully."""
     # Arrange
-    msg1 = MagicMock(body=b"fake_body1")
-    msg2 = MagicMock(body=b"fake_body2")
+    message1 = MagicMock(body=b"fake_body1")
+    message2 = MagicMock(body=b"fake_body2")
 
     async def fake_iter():
-        yield msg1
-        yield msg2
+        yield message1
+        yield message2
 
     queue = MagicMock()
     queue.iterator.return_value.__aenter__.return_value = fake_iter()
@@ -78,7 +83,8 @@ async def test_iterate_queue_calls_handle_message(mock_handler):
 
 @pytest.mark.asyncio
 @patch("asyncio.sleep", new_callable=AsyncMock)
-async def test_consume_generic_connection_closed(mock_sleep):
+async def test_consume_general_connection_closed(mock_sleep):
+    """Tests that consume_general waits when the connection is closed and does not create a channel."""
     # Arrange
     repository = MagicMock()
     connection = MagicMock()
@@ -97,12 +103,13 @@ async def test_consume_generic_connection_closed(mock_sleep):
 
 @pytest.mark.asyncio
 @patch("rabbit_mq.consumer.iterate_queue", new_callable=AsyncMock)
-async def test_consume_generic_one_iteration(mock_iter):
+async def test_consume_general_one_iteration(mock_iterate_queue):
+    """Tests that consume_general performs a single iteration and calls iterate_queue() once."""
     # Arrange
     connection = MagicMock()
     connection.is_closed = False
 
-    def flip_closed():
+    def conn_closed():
         connection.is_closed = True
         return False
 
@@ -119,27 +126,28 @@ async def test_consume_generic_one_iteration(mock_iter):
     channel.set_qos = AsyncMock()
     channel.get_queue = AsyncMock(return_value=queue)
 
-    connection.channel = AsyncMock(side_effect=lambda: flip_closed() or channel)
+    connection.channel = AsyncMock(side_effect=lambda: conn_closed() or channel)
 
     # Act
     task = asyncio.create_task(
-        consume_general(connection, MagicMock(), "queue", prefetch=10)
+        consume_general(connection, MagicMock(), "queue", prefetch=20)
     )
     await asyncio.sleep(0.01)
     task.cancel()
 
     # Assert
-    mock_iter.assert_awaited_once()
+    mock_iterate_queue.assert_awaited_once()
 
 
 @pytest.mark.asyncio
 @patch("rabbit_mq.consumer.consume_general", new_callable=AsyncMock)
-async def test_consume_message_wrapper(mock_general):
+async def test_consume_message_success(mock_consume_general):
+    """Tests that consume_message delegates to consume_general with correct parameters."""
     # Arrange / Act
     await consume_message("repo", "conn")
 
     # Assert
-    mock_general.assert_awaited_once_with(
+    mock_consume_general.assert_awaited_once_with(
         connection="conn",
         repository="repo",
         queue_name=settings.queue_name_message,
@@ -149,12 +157,13 @@ async def test_consume_message_wrapper(mock_general):
 
 @pytest.mark.asyncio
 @patch("rabbit_mq.consumer.consume_general", new_callable=AsyncMock)
-async def test_consume_dlq_wrapper(mock_general):
+async def test_consume_dlq_success(mock_consume_general):
+    """Tests that consume_dlq delegates to consume_general with correct parameters."""
     # Arrange / Act
     await consume_dlq("conn")
 
     # Assert
-    mock_general.assert_awaited_once_with(
+    mock_consume_general.assert_awaited_once_with(
         connection="conn",
         repository=None,
         queue_name=settings.queue_name_dlq,
