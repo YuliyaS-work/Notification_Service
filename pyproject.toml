@@ -17,4 +17,7 @@ dependencies = [
 pythonpath = ["."]
 
 [dependency-groups]
-dev = ["ruff"]
+dev = [
+    "ruff",
+    "mypy"
+]

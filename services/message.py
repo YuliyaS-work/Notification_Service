@@ -5,6 +5,9 @@ They validate incoming data, update the database, and send emails when needed.
 import logging
 import uuid
 from datetime import datetime
+from typing import Any
+
+from aio_pika.abc import AbstractIncomingMessage
 
 from core.config import settings
 from schemas.consumer import IncomingResetPasswordMessage
@@ -14,7 +17,11 @@ from ses.ses_service import send_email
 logger = logging.getLogger(__name__)
 
 
-async def process_message(raw_body: str, message, repository):
+async def process_message(
+        raw_body: str,
+        message: AbstractIncomingMessage,
+        repository: Any
+) -> None:
     """
     Handles a reset‑password message and updates its status in the database if sending fails.
 
@@ -109,7 +116,7 @@ async def process_message(raw_body: str, message, repository):
             await message.nack(requeue=True)
 
 
-async def process_dlq_message(message):
+async def process_dlq_message(message: AbstractIncomingMessage) -> None:
     """Handles messages that were moved to the dead letter queue."""
     await message.ack() # Delete from dead letter queue, the message is in the database.
     logger.warning("DLQ message was acknowledged")

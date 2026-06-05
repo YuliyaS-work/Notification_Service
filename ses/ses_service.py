@@ -16,7 +16,14 @@ ses_session = aioboto3.Session(
     region_name=settings.aws_region,
 )
 
-async def send_email(source, destination, subject, text, html, reply_tos=None) -> str:
+async def send_email(
+        source: str,
+        destination: str,
+        subject: str,
+        text: str,
+        html: str,
+        reply_tos: list[str] | None = None
+) -> str:
     """
     Sends an email.
 

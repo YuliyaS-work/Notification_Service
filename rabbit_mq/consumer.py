@@ -7,13 +7,18 @@ iterate over incoming messages and pass them to the proper handlers.
 import asyncio
 import logging
 
+from aio_pika.abc import AbstractQueue, AbstractRobustConnection
 from core.config import settings
 from services.message import process_message, process_dlq_message
 
 logger = logging.getLogger(__name__)
 
 
-async def handle_message(message, repository, queue_name):
+async def handle_message(
+        message,
+        repository: object | None,
+        queue_name: str
+) -> None:
     """Processes a single message from a main queue or DLQ."""
     body = message.body.decode()
 
@@ -29,7 +34,11 @@ async def handle_message(message, repository, queue_name):
         logger.error(f"Error: failed message processing in {queue_name}: {e}")
 
 
-async def iterate_queue(queue, repository, queue_name):
+async def iterate_queue(
+        queue: AbstractQueue,
+        repository: object | None,
+        queue_name: str
+):
     """Iterates over messages in the main queue or DLQ."""
     async with queue.iterator() as queue_iter:
         async for message in queue_iter:
@@ -37,7 +46,12 @@ async def iterate_queue(queue, repository, queue_name):
     logger.info(f"Success: iterating over messages in {queue_name}")
 
 
-async def consume_general(connection, repository, queue_name, prefetch=None):
+async def consume_general(
+        connection: AbstractRobustConnection,
+        repository: object | None,
+        queue_name: str,
+        prefetch=None
+) -> None:
     """
     Runs a persistent consumer loop for a RabbitMQ queue.
 
@@ -77,7 +91,10 @@ async def consume_general(connection, repository, queue_name, prefetch=None):
             continue
 
 
-async def consume_message(repository, connection):
+async def consume_message(
+        repository: object | None,
+        connection: AbstractRobustConnection
+) -> None:
     """Starts consumer for the main queue."""
     logger.info("Start: launching consumer for main queue")
 
@@ -91,7 +108,7 @@ async def consume_message(repository, connection):
     logger.info("Consumer for main queue stoped")
 
 
-async def consume_dlq(connection):
+async def consume_dlq(connection: AbstractRobustConnection) -> None:
     """Starts consumer for DLQ."""
     logger.info("Start: launching consumer for DLQ")
 
