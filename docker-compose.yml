@@ -2,7 +2,7 @@ services:
   mongodb:
     image: 'bitnami/mongodb:latest'
     container_name: mongodb
-    restart: always
+#    restart: always
     environment:
       - MONGODB_ROOT_PASSWORD=${MONGODB_ROOT_PASSWORD}
       - MONGODB_DATABASE=${MONGODB_DATABASE}
