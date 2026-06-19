@@ -5,7 +5,7 @@ It is used to validate the data received from the message queue.
 from pydantic import BaseModel
 
 
-class IncomingResetPasswordMessage(BaseModel):
+class IncomingBodyMessage(BaseModel):
     """
     Schema for incoming reset-password messages.
     """

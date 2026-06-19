@@ -4,6 +4,9 @@ services:
     container_name: mongodb
     restart: always
     environment:
+      - MONGODB_REPLICA_SET_MODE=${MONGODB_REPLICA_SET_MODE}
+      - MONGODB_REPLICA_SET_NAME=${MONGODB_REPLICA_SET_NAME}
+      - MONGODB_REPLICA_SET_KEY=${MONGODB_REPLICA_SET_KEY}
       - MONGODB_ROOT_PASSWORD=${MONGODB_ROOT_PASSWORD}
       - MONGODB_DATABASE=${MONGODB_DATABASE}
       - MONGODB_USERNAME=${MONGODB_USERNAME}
@@ -12,8 +15,6 @@ services:
       - "27017:27017"
     volumes:
           - mongodb_data:/bitnami/mongodb
-    tmpfs:
-      - /tmp
 
   ns_app:
       build: .

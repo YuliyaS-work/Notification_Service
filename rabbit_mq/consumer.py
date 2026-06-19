@@ -1,27 +1,32 @@
 """
 This file contains asynchronous RabbitMQ consumers.
 
-They read messages from main and DLQ queues, create channels,
+They read messages from main, create channel,
 iterate over incoming messages and pass them to the proper handlers.
 """
 import asyncio
 import logging
+from typing import Any
+
+from aio_pika.abc import AbstractQueue, AbstractRobustConnection
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from core.config import settings
-from services.message import process_message, process_dlq_message
+from services.message import process_message
 
 logger = logging.getLogger(__name__)
 
 
-async def handle_message(message, repository, queue_name):
+async def handle_message(
+        message,
+        repository: object | None,
+        queue_name: str,
+        mongo: AsyncIOMotorClient[Any],
+        connection: AbstractRobustConnection
+) -> None:
     """Processes a single message from a main queue or DLQ."""
-    body = message.body.decode()
-
     try:
-        if queue_name == settings.queue_name_message:
-            await process_message(body, message, repository)
-        else:
-            await process_dlq_message(message)
+        await process_message(message, repository, mongo, connection)
 
         logger.info(f"Success: processing message from {queue_name} ")
 
@@ -29,20 +34,33 @@ async def handle_message(message, repository, queue_name):
         logger.error(f"Error: failed message processing in {queue_name}: {e}")
 
 
-async def iterate_queue(queue, repository, queue_name):
+async def iterate_queue(
+        queue: AbstractQueue,
+        repository: object | None,
+        queue_name: str,
+        mongo: AsyncIOMotorClient[Any],
+        connection: AbstractRobustConnection
+) -> None:
     """Iterates over messages in the main queue or DLQ."""
     async with queue.iterator() as queue_iter:
         async for message in queue_iter:
-            await handle_message(message, repository, queue_name)
+            await handle_message(message, repository, queue_name, mongo, connection)
     logger.info(f"Success: iterating over messages in {queue_name}")
 
 
-async def consume_general(connection, repository, queue_name, prefetch=None):
+async def consume_message(
+        connection: AbstractRobustConnection,
+        mongo: AsyncIOMotorClient[Any],
+        repository: object | None,
+        queue_name=settings.queue_name_message,
+        prefetch=20,
+) -> None:
     """
     Runs a persistent consumer loop for a RabbitMQ queue.
 
     Args:
         connection: Active RabbitMQ connection used to create channels.
+        mongo: MongoDB client.
         repository: Repository instance for message processing.
         queue_name: Name of the queue.
         prefetch: Number of messages to prefetch (optional).
@@ -60,14 +78,17 @@ async def consume_general(connection, repository, queue_name, prefetch=None):
             channel = await connection.channel()
             logger.info(f"Created a channel for {queue_name}")
 
-            async with channel:
-                if prefetch:
-                    await channel.set_qos(prefetch_count=prefetch)
+            try:
+                async with channel:
+                    if prefetch:
+                        await channel.set_qos(prefetch_count=prefetch)
 
-                queue = await channel.get_queue(queue_name)
-                logger.info(f"Got queue={queue_name}")
+                    queue = await channel.get_queue(queue_name)
+                    logger.info(f"Got queue={queue_name}")
 
-                await iterate_queue(queue, repository, queue_name)
+                    await iterate_queue(queue, repository, queue_name, mongo, connection)
+            finally:
+                await channel.close()
 
             logger.info(f"Success: handled {queue_name}")
 
@@ -75,31 +96,3 @@ async def consume_general(connection, repository, queue_name, prefetch=None):
             logger.error(f"Error: failed network connection for {queue_name}: {e}")
             await asyncio.sleep(5)
             continue
-
-
-async def consume_message(repository, connection):
-    """Starts consumer for the main queue."""
-    logger.info("Start: launching consumer for main queue")
-
-    await consume_general(
-        connection=connection,
-        repository=repository,
-        queue_name=settings.queue_name_message,
-        prefetch=20,
-    )
-
-    logger.info("Consumer for main queue stoped")
-
-
-async def consume_dlq(connection):
-    """Starts consumer for DLQ."""
-    logger.info("Start: launching consumer for DLQ")
-
-    await consume_general(
-        connection=connection,
-        repository=None,
-        queue_name=settings.queue_name_dlq,
-        prefetch=None,
-    )
-
-    logger.info("Consumer for DLQ stoped")
