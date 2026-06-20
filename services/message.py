@@ -110,10 +110,6 @@ async def process_message(
         # Return the message to main queue for next retry
         if attempts < 5:
 
-            # Simple backoff.
-            delay = 2 ** attempts
-            await asyncio.sleep(delay)
-
             # Publish message with new retry count header.
             try:
                 channel = await connection.channel()
