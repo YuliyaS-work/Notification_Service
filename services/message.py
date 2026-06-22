@@ -2,7 +2,6 @@
 This file contains functions that process reset‑password messages from RabbitMQ.
 They validate incoming data, update the database, and send emails when needed.
 """
-import asyncio
 import logging
 from datetime import datetime
 from typing import Any
