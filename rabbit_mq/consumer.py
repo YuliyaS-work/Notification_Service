@@ -56,7 +56,8 @@ async def consume_message(
         prefetch=20,
 ) -> None:
     """
-    Runs a persistent consumer loop for a RabbitMQ queue.
+    Consumes messages from the RabbitMQ queue in an endless loop.
+    Declares a main and a DLQ queues.
 
     Args:
         connection: Active RabbitMQ connection used to create channels.
@@ -69,28 +70,39 @@ async def consume_message(
     """
     logger.info(f"Start: handling {queue_name}")
 
+    channel = await connection.channel()
+    logger.info(f"Created a channel for {queue_name}")
+
+    if prefetch:
+        await channel.set_qos(prefetch_count=prefetch)
+
+    dlx = await channel.declare_exchange("dlx_exchange", "direct")
+
+    queue = await channel.declare_queue(
+        "reset-password-stream",
+        durable=True,
+        arguments={
+            "x-dead-letter-exchange": "dlx_exchange",
+            "x-dead-letter-routing-key": "dlx_key"
+        }
+    )
+    logger.info("Queue 'reset-password-stream' was declared")
+
+    dlq = await channel.declare_queue(
+        "reset-password-stream-dlq",
+        durable=True
+    )
+    logger.info("Queue 'reset-password-stream-dlq' was declared")
+
+    await dlq.bind(dlx, "dlx_key")
+
     while True:
         try:
             if connection.is_closed:
                 await asyncio.sleep(5)
                 continue
 
-            channel = await connection.channel()
-            logger.info(f"Created a channel for {queue_name}")
-
-            try:
-                async with channel:
-                    if prefetch:
-                        await channel.set_qos(prefetch_count=prefetch)
-
-                    queue = await channel.get_queue(queue_name)
-                    logger.info(f"Got queue={queue_name}")
-
-                    await iterate_queue(queue, repository, queue_name, mongo, connection)
-            finally:
-                await channel.close()
-
-            logger.info(f"Success: handled {queue_name}")
+            await iterate_queue(queue, repository, queue_name, mongo, connection)
 
         except Exception as e:
             logger.error(f"Error: failed network connection for {queue_name}: {e}")
