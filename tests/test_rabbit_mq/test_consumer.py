@@ -79,65 +79,35 @@ async def test_iterate_queue_success(
 
 
 @pytest.mark.asyncio
-@patch("asyncio.sleep", new_callable=AsyncMock)
-async def test_consume_message_connection_closed(
-        mock_sleep,
-        mock_mongo,
-        mock_connection,
-        mock_repo
-):
-    """Tests that consume_general waits when the connection is closed and does not create a channel."""
-    # Arrange
-    mock_connection.is_closed = True
-    mock_connection.channel = AsyncMock()
-
-    mock_sleep.side_effect = [None, asyncio.CancelledError()]
-
-    # Act
-    with pytest.raises(asyncio.CancelledError):
-        await consume_message(mock_connection, mock_mongo, mock_repo,"queue_name", prefetch=None)
-
-    # Assert
-    mock_sleep.assert_called_with(5)
-
-
-@pytest.mark.asyncio
 @patch("rabbit_mq.consumer.iterate_queue", new_callable=AsyncMock)
-async def test_consume_message_one_iteration(
+async def test_consume_message_success(
         mock_iterate_queue,
         mock_mongo,
         mock_connection,
         mock_repo
 ):
-    """Tests that consume_message performs a single iteration and calls iterate_queue() once."""
+    """Tests that consume_message initializes the channel, declares queues, and calls iterate_queue exactly once."""
     # Arrange
-    mock_connection.is_closed = False
-
     channel = AsyncMock()
     channel.set_qos = AsyncMock()
-    channel.declare_queue = AsyncMock()
     channel.declare_exchange = AsyncMock()
+    fake_main_queue = AsyncMock()
+    fake_dlq = AsyncMock()
 
-    main_queue = AsyncMock()
-    dlq = AsyncMock()
-    dlq.bind = AsyncMock()
+    channel.declare_queue.side_effect = [fake_main_queue, fake_dlq]
+    mock_connection.channel.return_value = channel
 
-    channel.declare_queue.side_effect = [main_queue, dlq]
-    mock_connection.channel = AsyncMock(return_value=channel)
-
-    # one iteration
-    async def first_and_stop(*args, **kwargs):
-        mock_connection.is_closed = True
-        await asyncio.sleep(0)
-
-    mock_iterate_queue.side_effect = first_and_stop
+    mock_iterate_queue.return_value = None
 
     # Act
-    task = asyncio.create_task(
-        consume_message(mock_connection, mock_mongo, mock_repo,"queue_name", prefetch=None)
+    await consume_message(
+        mock_connection,
+        mock_mongo,
+        mock_repo,
+        "queue_name",
+        prefetch=None
     )
-    await asyncio.sleep(0.01)
-    task.cancel()
 
     # Assert
     mock_iterate_queue.assert_awaited_once()
+    mock_connection.channel.assert_called_once()

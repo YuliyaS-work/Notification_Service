@@ -4,7 +4,6 @@ This file contains asynchronous RabbitMQ consumers.
 They read messages from main, create channel,
 iterate over incoming messages and pass them to the proper handlers.
 """
-import asyncio
 import logging
 from typing import Any
 
@@ -56,8 +55,7 @@ async def consume_message(
         prefetch=20,
 ) -> None:
     """
-    Consumes messages from the RabbitMQ queue in an endless loop.
-    Declares a main and a DLQ queues.
+    Creates RabbitMQ channel and queues, then begins reading messages with iterate_queue().
 
     Args:
         connection: Active RabbitMQ connection used to create channels.
@@ -96,15 +94,4 @@ async def consume_message(
 
     await dlq.bind(dlx, "dlx_key")
 
-    while True:
-        try:
-            if connection.is_closed:
-                await asyncio.sleep(5)
-                continue
-
-            await iterate_queue(queue, repository, queue_name, mongo, connection)
-
-        except Exception as e:
-            logger.error(f"Error: failed network connection for {queue_name}: {e}")
-            await asyncio.sleep(5)
-            continue
+    await iterate_queue(queue, repository, queue_name, mongo, connection)
