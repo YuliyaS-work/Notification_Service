@@ -2,7 +2,6 @@
 import logging
 
 import pytest
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from rabbit_mq.consumer import handle_message, iterate_queue, consume_message

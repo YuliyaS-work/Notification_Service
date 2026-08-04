@@ -24,7 +24,7 @@ async def test_connect_db_success(mock_motor_client, mock_mongo_db, caplog):
 
     # Assert
     assert db.client is not None
-    assert f"Connection to MongoDB established" in caplog.text
+    assert "Connection to MongoDB established" in caplog.text
     mock_motor_client.assert_called_once_with("test_url", uuidrepresentation="standard")
 
 @pytest.mark.asyncio
@@ -40,7 +40,7 @@ async def test_connect_db_fail(mock_client, mock_mongo_db, caplog):
         await db.connect_db()
 
     # Assert
-    assert f"Connection to MongoDB failed: fake_error" in caplog.text
+    assert "Connection to MongoDB failed: fake_error" in caplog.text
 
 
 def test_disconnect_db_success( mock_mongo_db, caplog):

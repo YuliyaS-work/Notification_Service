@@ -1,5 +1,5 @@
 """Provides unit test for the application startup process."""
-from unittest.mock import patch, AsyncMock, MagicMock, Mock
+from unittest.mock import patch, AsyncMock, Mock
 
 import pytest
 
