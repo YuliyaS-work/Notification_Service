@@ -24,8 +24,9 @@ pipeline {
                     'AWS_SECRET_ACCESS_KEY=test',
                     'AWS_REGION=us-east-1',
                     'SES_EMAIL_FROM=user@example.com',
-                    'BUCKET_NAME=test',
-                    'RABBITMQ_URL=amqp://guest:guest@localhost/'
+                    'RABBITMQ_URL=amqp://guest:guest@localhost/',
+                    'QUEUE_NAME_MESSAGE=test_main_queue',
+                    'QUEUE_NAME_DLQ=test_dlq'
                 ]) {
                     sh 'uv run coverage run -m pytest'
                     sh 'uv run coverage report'
