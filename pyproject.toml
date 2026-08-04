@@ -16,7 +16,10 @@ pythonpath = ["."]
 [dependency-groups]
 dev = [
     "ruff",
-    "mypy"
+    "mypy",
+    "pytest>=9.1.1",
+    "coverage>=7.15.3",
+    "pytest-asyncio>=1.4.0",
 ]
 
 [tool.mypy]
