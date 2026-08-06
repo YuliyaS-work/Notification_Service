@@ -1,5 +1,5 @@
 pipeline {
-    {
+    agent {
         kubernetes {
             yaml '''
 apiVersion: v1
