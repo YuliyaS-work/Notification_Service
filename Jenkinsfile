@@ -82,13 +82,11 @@ spec:
         stage('Push Docker') {
             steps {
                 container('build-tools') {
-                    dir('user_management_api'){
-                        withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
-                            sh '''
-                                echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                                docker push yuliyaswork/notification:latest
-                            '''
-                        }
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
+                        sh '''
+                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                            docker push yuliyaswork/notification:latest
+                        '''
                     }
                 }
             }
