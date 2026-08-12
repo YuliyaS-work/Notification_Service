@@ -102,8 +102,10 @@ spec:
                             kubectl apply -f k8s/namespace.yaml
 
                             kubectl apply -f k8s/shared/rabbitmq.yaml --validate=false
-                            kubectl rollout status deployment rabbitmq -n app --timeout=90s
+                            kubectl rollout status statefulset rabbitmq -n app --timeout=90s
+
                             kubectl apply -f k8s/notification/ --validate=false
+                            kubectl rollout status statefulset notification-mongodb -n app --timeout=120s
 
                             kubectl rollout restart deployment notification -n app
                             kubectl rollout status deployment notification -n app --timeout=120s
